@@ -7,7 +7,9 @@ use open;
 use parser::parse;
 use std::future::Future;
 use tokio::{net::UnixStream, runtime::Runtime};
-const SOCKET_PATH: &str = "/tmp/gui_calc.sock";
+
+const GUI_SOCKET_PATH: &str = "/tmp/gui_calc.sock";
+const TRACE_FILE_PATH: &str = "/tmp/trace.txt";
 
 fn main() -> Result<(), eframe::Error> {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -46,14 +48,16 @@ impl Calculator {
     async fn read_buffer(&mut self, socket: UnixStream) {
         let mut buf = [0u8; 1024];
         socket.readable().await.expect("Failed: socket unreadable");
-        let len = match socket.try_read(&mut buf) {
-            Ok(l) => l,
+        let truncated_buf = match socket.try_read(&mut buf) {
+            Ok(len) => buf[0..len]
+                .try_into()
+                .expect("Failed: parsing f64 from native endian slice"),
             Err(e) => {
                 eprintln!("Failed to read data from Unix socket: {:#?}", e);
                 return;
             }
         };
-        self.result = std::str::from_utf8(&buf[0..len]).unwrap().to_string()
+        self.result = f64::from_ne_bytes(truncated_buf).to_string()
     }
     async fn handle_calculator(
         &mut self,
@@ -86,7 +90,7 @@ impl eframe::App for Calculator {
             ui.horizontal(|ui| {
                 if ui.button("submit").clicked() {
                     async_wrapper(async {
-                        let socket = UnixStream::connect(SOCKET_PATH)
+                        let socket = UnixStream::connect(GUI_SOCKET_PATH)
                             .await
                             .expect("Failed to connect to unix socket");
                         if let Err(e) = self.handle_calculator(&socket).await {
@@ -98,7 +102,7 @@ impl eframe::App for Calculator {
                 }
                 ui.label("          ");
                 if ui.button("trace").clicked() {
-                    open::that("Cargo.toml").expect("Failed to open `Cargo.toml`");
+                    open::that(TRACE_FILE_PATH).expect("Failed to open `Cargo.toml`");
                 }
             });
             ui.label(format!(

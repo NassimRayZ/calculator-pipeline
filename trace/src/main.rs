@@ -1,5 +1,8 @@
 const TRACE_SOCKET_PATH: &str = "/tmp/trace_calc.sock";
-use std::{fs, os::unix::net::UnixStream};
+const TRACE_FILE_PATH: &str = "/tmp/trace.txt";
+
+use std::io::Write;
+use std::{fs, str};
 use tokio::net::UnixListener;
 
 #[tokio::main]
@@ -21,7 +24,7 @@ async fn main() {
                         continue;
                     }
                 };
-                handle_request(&buf, len).await;
+                handle_request(&buf, len);
             }
             Err(e) => {
                 eprintln!("Failed to read from socket: {:#?}", e);
@@ -29,12 +32,22 @@ async fn main() {
             }
         }
     }
-    let stdin = std::io::stdin();
-    for line in stdin.lines() {
-        println!("{}", line.unwrap());
-    }
 }
 
-async fn handle_request(buf: &[u8], len: usize) {
-    bu
+fn handle_request(buf: &[u8], len: usize) {
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(TRACE_FILE_PATH)
+        .expect("Failed: opening the trace file");
+    let operation = match str::from_utf8(&buf[0..len]) {
+        Ok(op) => op,
+        Err(e) => {
+            eprintln!("Failed parsing the operation: {:#?}", e);
+            return;
+        }
+    };
+    if let Err(e) = writeln!(file, "{}", operation) {
+        eprintln!("Failed writing to file: {:#?}", e);
+    }
 }
