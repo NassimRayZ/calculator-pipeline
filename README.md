@@ -5,5 +5,5 @@ A small caculator using the pipeline (Pipe&amp;Filter) architecture
 1. you should use Linux (the pipes are unix sockets).
 2. build the workspace using `cargo build --release` (oh you should install the rust programming language link:([Install rust](https://www.rust-lang.org/tools/install)))
 3. execute the project via `target/release/gui`, `target/release/calculator` and `target/release/trace`
-4. and voila! you can execute the simple calculator, btw! the allow operations are: +, -, / and *
+4. and voila! you can execute the simple calculator, btw! the allowed operations are: +, -, / and *
 example: `12*(12+12/12-(12+12*12))`
